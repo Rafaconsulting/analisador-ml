@@ -5,6 +5,43 @@ import plotly.express as px
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="MeliAds Strategist", page_icon="🚀", layout="wide")
 
+# --- CSS SNIPER (ESTILO FORÇADO PARA CARDS) ---
+st.markdown("""
+<style>
+    /* 1. O Cartão em si (Fundo Branco e Borda) */
+    div[data-testid="stMetric"] {
+        background-color: #ffffff !important;
+        border: 1px solid #e6e6e6 !important;
+        padding: 15px !important;
+        border-radius: 8px !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+        color: #000000 !important;
+    }
+
+    /* 2. O Título da Métrica (Label) - Forçar Cinza Escuro */
+    div[data-testid="stMetricLabel"] > label, 
+    div[data-testid="stMetricLabel"] > div,
+    div[data-testid="stMetricLabel"] p {
+        color: #444444 !important;
+        font-size: 14px !important;
+        font-weight: 600 !important;
+    }
+
+    /* 3. O Valor da Métrica (Número) - Forçar Preto */
+    div[data-testid="stMetricValue"] > div,
+    div[data-testid="stMetricValue"] {
+        color: #000000 !important;
+        font-size: 26px !important;
+        font-weight: 700 !important;
+    }
+
+    /* 4. O Delta (Setinha e % se houver) */
+    div[data-testid="stMetricDelta"] > div {
+        font-weight: 600 !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # --- BARRA LATERAL ---
 with st.sidebar:
     st.image("https://http2.mlstatic.com/frontend-assets/ml-web-navigation/ui-navigation/5.21.22/mercadolibre/logo__large_plus.png", width=150)
@@ -28,7 +65,7 @@ def clean_numeric(x):
             return 0.0
     return x
 
-# --- PROCESSAMENTO DE DADOS ---
+# --- PROCESSAMENTO ---
 if uploaded_file is not None:
     try:
         # 1. Leitura
@@ -50,7 +87,7 @@ if uploaded_file is not None:
                     df[col] = df[col].apply(clean_numeric)
                 df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
-        # 3. Agrupamento (Consolidar campanhas)
+        # 3. Agrupamento
         if 'Desde' in df.columns:
             df['Desde'] = pd.to_datetime(df['Desde'], errors='coerce')
             df = df.sort_values(by=['Nome', 'Desde'])
@@ -94,7 +131,7 @@ if uploaded_file is not None:
 
         df_grouped['Ação'] = df_grouped.apply(get_recommendation, axis=1)
 
-        # Cálculo de Potencial
+        # Potencial
         def calc_potential(row):
             if "AUMENTAR" in row['Ação']:
                 loss_pct = row['% de impressões perdidas por orçamento'] / 100
@@ -107,67 +144,24 @@ if uploaded_file is not None:
         df_grouped['Potencial Extra'] = df_grouped.apply(calc_potential, axis=1)
         potential_total = df_grouped['Potencial Extra'].sum()
 
-        # --- VISUALIZAÇÃO (CARTÕES HTML COM CSS !IMPORTANT) ---
-        
+        # --- VISUALIZAÇÃO ---
+
+        # 1. Cartões de KPI (NATIVOS)
         total_inv = df_grouped['Investimento (Moeda local)'].sum()
         total_rev = df_grouped['Receita (Moeda local)'].sum()
         roas_geral = total_rev / total_inv if total_inv > 0 else 0
 
-        # Estilo CSS FORÇADO (!important)
-        # Background branco puro (#ffffff) e texto preto puro (#000000)
-        card_style = """
-            background-color: #ffffff !important; 
-            border: 1px solid #e0e0e0 !important; 
-            padding: 20px !important; 
-            border-radius: 10px !important; 
-            text-align: center !important;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
-            margin-bottom: 10px !important;
-        """
-        # Título cinza escuro forçado
-        title_style = "color: #333333 !important; font-size: 16px !important; margin-bottom: 8px !important; font-weight: 600 !important;"
-        # Valor preto forçado
-        value_style = "color: #000000 !important; font-size: 28px !important; font-weight: 800 !important; margin: 0 !important;"
-
         c1, c2, c3, c4 = st.columns(4)
-
-        with c1:
-            st.markdown(f"""
-            <div style="{card_style}">
-                <div style="{title_style}">Investimento Total</div>
-                <div style="{value_style}">R$ {total_inv:,.2f}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with c2:
-            st.markdown(f"""
-            <div style="{card_style}">
-                <div style="{title_style}">Receita Atual</div>
-                <div style="{value_style} color: #0066cc !important;">R$ {total_rev:,.2f}</div>
-            </div>
-            """, unsafe_allow_html=True)
-
-        with c3:
-            st.markdown(f"""
-            <div style="{card_style}">
-                <div style="{title_style}">ROAS Global</div>
-                <div style="{value_style} color: #27ae60 !important;">{roas_geral:.2f}x</div>
-            </div>
-            """, unsafe_allow_html=True)
-
-        with c4:
-            st.markdown(f"""
-            <div style="{card_style}">
-                <div style="{title_style}">Potencial Extra</div>
-                <div style="{value_style} color: #e67e22 !important;">+ R$ {potential_total:,.2f}</div>
-            </div>
-            """, unsafe_allow_html=True)
+        c1.metric("Investimento Total", f"R$ {total_inv:,.2f}")
+        c2.metric("Receita Atual", f"R$ {total_rev:,.2f}")
+        c3.metric("ROAS Global", f"{roas_geral:.2f}x")
+        c4.metric("Potencial Extra", f"R$ {potential_total:,.2f}", delta="Oportunidade")
 
         st.markdown("<br>", unsafe_allow_html=True)
 
         # 2. GRÁFICO DE BARRAS
-        st.subheader("📊 Distribuição de Receita por Ação Recomendada")
-        st.caption("Onde está o dinheiro da sua conta?")
+        st.subheader("📊 Distribuição de Receita por Ação")
+        st.caption("Volume financeiro em cada estratégia")
         
         df_chart = df_grouped[df_grouped['Receita (Moeda local)'] > 0].groupby('Ação')['Receita (Moeda local)'].sum().reset_index()
         
@@ -189,16 +183,15 @@ if uploaded_file is not None:
             color_discrete_map=color_map,
             height=350
         )
-        # Forçar cor do texto do gráfico para garantir leitura
         fig.update_layout(
             showlegend=False, 
             xaxis_title="Receita Total (R$)", 
             yaxis_title=None,
-            font=dict(color="gray") # Garante que os textos do gráfico sejam legíveis
+            font=dict(color="#444444") # Texto do gráfico cinza escuro
         )
         st.plotly_chart(fig, use_container_width=True)
 
-        # 3. TABELA DE AÇÃO
+        # 3. TABELA
         st.markdown("---")
         st.subheader("📋 Plano de Ação Tático")
         
@@ -225,10 +218,10 @@ if uploaded_file is not None:
             },
             hide_index=True,
             use_container_width=True,
-            height=500
+            height=600
         )
 
-        # 4. Botão Download
+        # 4. Download
         csv = df_show.to_csv(index=False).encode('utf-8')
         st.download_button(
             label="📥 Baixar Tabela em Excel (CSV)",
