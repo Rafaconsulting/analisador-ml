@@ -5,43 +5,6 @@ import plotly.express as px
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="MeliAds Strategist", page_icon="🚀", layout="wide")
 
-# --- ESTILO CSS (CORREÇÃO DE CONTRASTE) ---
-st.markdown("""
-<style>
-    /* 1. Estilo do Cartão (Fundo Cinza Claro) */
-    div[data-testid="stMetric"] {
-        background-color: #f0f2f6 !important;
-        border: 1px solid #dcdcdc;
-        padding: 15px;
-        border-radius: 8px;
-        box-shadow: 1px 1px 4px rgba(0,0,0,0.1);
-    }
-
-    /* 2. Forçar COR PRETA no Título (Label) */
-    div[data-testid="stMetricLabel"] {
-        color: #444444 !important;
-        font-weight: bold;
-    }
-    /* Caso o Streamlit use tags p ou div internas */
-    div[data-testid="stMetricLabel"] * {
-        color: #444444 !important;
-    }
-
-    /* 3. Forçar COR PRETA no Número (Value) */
-    div[data-testid="stMetricValue"] {
-        color: #000000 !important;
-    }
-    div[data-testid="stMetricValue"] * {
-        color: #000000 !important;
-    }
-
-    /* 4. Ajuste do Delta (Flechinhas) para garantir leitura */
-    div[data-testid="stMetricDelta"] svg {
-        fill: #333333 !important; /* Ícone escuro se necessário */
-    }
-</style>
-""", unsafe_allow_html=True)
-
 # --- BARRA LATERAL ---
 with st.sidebar:
     st.image("https://http2.mlstatic.com/frontend-assets/ml-web-navigation/ui-navigation/5.21.22/mercadolibre/logo__large_plus.png", width=150)
@@ -108,7 +71,7 @@ if uploaded_file is not None:
         df_grouped['ROAS_Real'] = df_grouped.apply(lambda x: x['Receita (Moeda local)'] / x['Investimento (Moeda local)'] if x['Investimento (Moeda local)'] > 0 else 0, axis=1)
         df_grouped['ACOS_Real'] = df_grouped.apply(lambda x: (x['Investimento (Moeda local)'] / x['Receita (Moeda local)'] * 100) if x['Receita (Moeda local)'] > 0 else 0, axis=1)
 
-        # 5. LÓGICA DE DECISÃO (O Cérebro)
+        # 5. LÓGICA DE DECISÃO
         def get_recommendation(row):
             status = str(row.get('Status', '')).lower()
             if 'ativa' not in status and row['Investimento (Moeda local)'] == 0:
@@ -138,40 +101,81 @@ if uploaded_file is not None:
                 if loss_pct > 0 and loss_pct < 1:
                     current_rev = row['Receita (Moeda local)']
                     projected_rev = current_rev / (1 - loss_pct)
-                    return (projected_rev - current_rev) * 0.5 # Conservador (50%)
+                    return (projected_rev - current_rev) * 0.5 
             return 0
 
         df_grouped['Potencial Extra'] = df_grouped.apply(calc_potential, axis=1)
         potential_total = df_grouped['Potencial Extra'].sum()
 
-        # --- VISUALIZAÇÃO ---
-
-        # 1. Cartões de KPI
+        # --- VISUALIZAÇÃO (CARTÕES HTML COM CSS !IMPORTANT) ---
+        
         total_inv = df_grouped['Investimento (Moeda local)'].sum()
         total_rev = df_grouped['Receita (Moeda local)'].sum()
         roas_geral = total_rev / total_inv if total_inv > 0 else 0
 
+        # Estilo CSS FORÇADO (!important)
+        # Background branco puro (#ffffff) e texto preto puro (#000000)
+        card_style = """
+            background-color: #ffffff !important; 
+            border: 1px solid #e0e0e0 !important; 
+            padding: 20px !important; 
+            border-radius: 10px !important; 
+            text-align: center !important;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
+            margin-bottom: 10px !important;
+        """
+        # Título cinza escuro forçado
+        title_style = "color: #333333 !important; font-size: 16px !important; margin-bottom: 8px !important; font-weight: 600 !important;"
+        # Valor preto forçado
+        value_style = "color: #000000 !important; font-size: 28px !important; font-weight: 800 !important; margin: 0 !important;"
+
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Investimento", f"R$ {total_inv:,.2f}")
-        c2.metric("Receita", f"R$ {total_rev:,.2f}")
-        c3.metric("ROAS Global", f"{roas_geral:.2f}x")
-        c4.metric("Potencial Extra", f"R$ {potential_total:,.2f}", delta="Oportunidade")
+
+        with c1:
+            st.markdown(f"""
+            <div style="{card_style}">
+                <div style="{title_style}">Investimento Total</div>
+                <div style="{value_style}">R$ {total_inv:,.2f}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with c2:
+            st.markdown(f"""
+            <div style="{card_style}">
+                <div style="{title_style}">Receita Atual</div>
+                <div style="{value_style} color: #0066cc !important;">R$ {total_rev:,.2f}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with c3:
+            st.markdown(f"""
+            <div style="{card_style}">
+                <div style="{title_style}">ROAS Global</div>
+                <div style="{value_style} color: #27ae60 !important;">{roas_geral:.2f}x</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with c4:
+            st.markdown(f"""
+            <div style="{card_style}">
+                <div style="{title_style}">Potencial Extra</div>
+                <div style="{value_style} color: #e67e22 !important;">+ R$ {potential_total:,.2f}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # 2. GRÁFICO SIMPLIFICADO (BARRAS)
+        # 2. GRÁFICO DE BARRAS
         st.subheader("📊 Distribuição de Receita por Ação Recomendada")
         st.caption("Onde está o dinheiro da sua conta?")
         
-        # Agrupar receita por Ação para o gráfico
         df_chart = df_grouped[df_grouped['Receita (Moeda local)'] > 0].groupby('Ação')['Receita (Moeda local)'].sum().reset_index()
         
-        # Mapa de Cores
         color_map = {
-            "AUMENTAR ORÇAMENTO 🟢": "#2ecc71", # Verde
-            "SUBIR ACOS ALVO 🟡": "#f1c40f", # Amarelo
-            "MANTER 🔵": "#3498db", # Azul
-            "PAUSAR / REDUZIR 🔴": "#e74c3c", # Vermelho
+            "AUMENTAR ORÇAMENTO 🟢": "#2ecc71", 
+            "SUBIR ACOS ALVO 🟡": "#f1c40f", 
+            "MANTER 🔵": "#3498db", 
+            "PAUSAR / REDUZIR 🔴": "#e74c3c", 
             "Inativa": "#95a5a6"
         }
 
@@ -185,25 +189,28 @@ if uploaded_file is not None:
             color_discrete_map=color_map,
             height=350
         )
-        fig.update_layout(showlegend=False, xaxis_title="Receita Total (R$)", yaxis_title=None)
+        # Forçar cor do texto do gráfico para garantir leitura
+        fig.update_layout(
+            showlegend=False, 
+            xaxis_title="Receita Total (R$)", 
+            yaxis_title=None,
+            font=dict(color="gray") # Garante que os textos do gráfico sejam legíveis
+        )
         st.plotly_chart(fig, use_container_width=True)
 
-        # 3. TABELA DE AÇÃO (Estilo Nativo)
+        # 3. TABELA DE AÇÃO
         st.markdown("---")
         st.subheader("📋 Plano de Ação Tático")
         
-        # Filtro Lateral
         acoes_unicas = sorted(df_grouped['Ação'].unique())
         filtro_acao = st.multiselect("Filtrar por Ação:", acoes_unicas, default=acoes_unicas)
         
-        # Preparar Tabela Final
         df_show = df_grouped[df_grouped['Ação'].isin(filtro_acao)].copy()
         df_show = df_show.sort_values(by='ROAS_Real', ascending=False)
         
         cols_final = ['Nome', 'Ação', 'Orçamento', 'ACOS Objetivo', 'ROAS_Real', 'Potencial Extra', 
                       '% de impressões perdidas por orçamento', '% de impressões perdidas por classificação']
 
-        # Exibir Tabela
         st.dataframe(
             df_show[cols_final],
             column_config={
