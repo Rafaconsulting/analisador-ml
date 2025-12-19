@@ -1,46 +1,26 @@
+Tem toda a razão. Às vezes, a solução mais simples é a melhor.
+
+Em vez de lutar contra o navegador do usuário tentando forçar branco ou preto, vamos definir uma **cor de fundo neutra e escura (Azul Marinho/Cinza Escuro)** para os cartões e forçar o **texto a ser Branco**.
+
+Isso funciona 100% das vezes porque:
+
+1. Se o fundo da página for branco (Modo Claro), o cartão escuro se destaca.
+2. Se o fundo da página for preto (Modo Escuro), o cartão escuro se integra bem.
+3. O texto branco sobre fundo escuro tem leitura garantida.
+
+Aqui está o código **V9 (Final)** com essa abordagem de design (Cartões "Dark Blue" profissionais).
+
+### 📋 Código V9 (Design de Alto Contraste)
+
+Substitua todo o código do `app.py` por este.
+
+```python
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="MeliAds Strategist", page_icon="🚀", layout="wide")
-
-# --- CSS SNIPER (ESTILO FORÇADO PARA CARDS) ---
-st.markdown("""
-<style>
-    /* 1. O Cartão em si (Fundo Branco e Borda) */
-    div[data-testid="stMetric"] {
-        background-color: #ffffff !important;
-        border: 1px solid #e6e6e6 !important;
-        padding: 15px !important;
-        border-radius: 8px !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
-        color: #000000 !important;
-    }
-
-    /* 2. O Título da Métrica (Label) - Forçar Cinza Escuro */
-    div[data-testid="stMetricLabel"] > label, 
-    div[data-testid="stMetricLabel"] > div,
-    div[data-testid="stMetricLabel"] p {
-        color: #444444 !important;
-        font-size: 14px !important;
-        font-weight: 600 !important;
-    }
-
-    /* 3. O Valor da Métrica (Número) - Forçar Preto */
-    div[data-testid="stMetricValue"] > div,
-    div[data-testid="stMetricValue"] {
-        color: #000000 !important;
-        font-size: 26px !important;
-        font-weight: 700 !important;
-    }
-
-    /* 4. O Delta (Setinha e % se houver) */
-    div[data-testid="stMetricDelta"] > div {
-        font-weight: 600 !important;
-    }
-</style>
-""", unsafe_allow_html=True)
 
 # --- BARRA LATERAL ---
 with st.sidebar:
@@ -65,7 +45,7 @@ def clean_numeric(x):
             return 0.0
     return x
 
-# --- PROCESSAMENTO ---
+# --- PROCESSAMENTO DE DADOS ---
 if uploaded_file is not None:
     try:
         # 1. Leitura
@@ -146,22 +126,68 @@ if uploaded_file is not None:
 
         # --- VISUALIZAÇÃO ---
 
-        # 1. Cartões de KPI (NATIVOS)
         total_inv = df_grouped['Investimento (Moeda local)'].sum()
         total_rev = df_grouped['Receita (Moeda local)'].sum()
         roas_geral = total_rev / total_inv if total_inv > 0 else 0
 
+        # ESTILO CSS - CARTÕES ESCUROS (NAVY BLUE)
+        # Fundo: #2c3e50 (Azul escuro quase cinza)
+        # Texto: #ffffff (Branco puro)
+        # Isso garante contraste em qualquer tema.
+        
+        card_style = """
+            background-color: #2c3e50; 
+            border-radius: 10px; 
+            padding: 20px; 
+            text-align: center;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+            color: white;
+            margin-bottom: 10px;
+        """
+        title_style = "font-size: 14px; color: #ecf0f1; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px;"
+        value_style = "font-size: 28px; color: #ffffff; font-weight: 700; margin: 0;"
+        highlight_green = "color: #2ecc71;"
+        highlight_blue = "color: #3498db;"
+        highlight_gold = "color: #f1c40f;"
+
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Investimento Total", f"R$ {total_inv:,.2f}")
-        c2.metric("Receita Atual", f"R$ {total_rev:,.2f}")
-        c3.metric("ROAS Global", f"{roas_geral:.2f}x")
-        c4.metric("Potencial Extra", f"R$ {potential_total:,.2f}", delta="Oportunidade")
+
+        with c1:
+            st.markdown(f"""
+            <div style="{card_style}">
+                <div style="{title_style}">Investimento Total</div>
+                <div style="{value_style}">R$ {total_inv:,.2f}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with c2:
+            st.markdown(f"""
+            <div style="{card_style}">
+                <div style="{title_style}">Receita Atual</div>
+                <div style="{value_style}">R$ {total_rev:,.2f}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with c3:
+            st.markdown(f"""
+            <div style="{card_style}">
+                <div style="{title_style}">ROAS Global</div>
+                <div style="{value_style}"><span style="{highlight_green}">{roas_geral:.2f}x</span></div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with c4:
+            st.markdown(f"""
+            <div style="{card_style}">
+                <div style="{title_style}">Potencial Extra</div>
+                <div style="{value_style}"><span style="{highlight_gold}">+ R$ {potential_total:,.2f}</span></div>
+            </div>
+            """, unsafe_allow_html=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
 
         # 2. GRÁFICO DE BARRAS
         st.subheader("📊 Distribuição de Receita por Ação")
-        st.caption("Volume financeiro em cada estratégia")
         
         df_chart = df_grouped[df_grouped['Receita (Moeda local)'] > 0].groupby('Ação')['Receita (Moeda local)'].sum().reset_index()
         
@@ -183,15 +209,16 @@ if uploaded_file is not None:
             color_discrete_map=color_map,
             height=350
         )
+        # Ajuste de layout para garantir visibilidade do texto no gráfico
         fig.update_layout(
             showlegend=False, 
             xaxis_title="Receita Total (R$)", 
             yaxis_title=None,
-            font=dict(color="#444444") # Texto do gráfico cinza escuro
+            font=dict(color="gray")
         )
         st.plotly_chart(fig, use_container_width=True)
 
-        # 3. TABELA
+        # 3. TABELA DE AÇÃO
         st.markdown("---")
         st.subheader("📋 Plano de Ação Tático")
         
@@ -235,3 +262,5 @@ if uploaded_file is not None:
 
 else:
     st.info("👈 Faça o upload do relatório na barra lateral.")
+
+```
