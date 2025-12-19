@@ -5,18 +5,27 @@ import plotly.express as px
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="MeliAds Strategist Pro", page_icon="🚀", layout="wide")
 
-# Estilo CSS para visual profissional
+# --- ESTILO CSS (CORRIGIDO PARA MODO ESCURO/CLARO) ---
 st.markdown("""
 <style>
-    .metric-card {
-        background-color: #f9f9f9;
-        border-left: 5px solid #2e86de;
+    /* Estilo dos Cartões de Métricas (KPIs) */
+    div[data-testid="stMetric"] {
+        background-color: #f0f2f6; /* Fundo cinza claro suave */
+        border-left: 5px solid #2e86de; /* Barra lateral azul */
         padding: 15px;
-        border-radius: 5px;
-        box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+        border-radius: 8px;
+        color: #31333F; /* Força texto escuro dentro do cartão */
+        box-shadow: 1px 1px 4px rgba(0,0,0,0.1);
     }
-    .stApp {
-        background-color: #ffffff;
+    
+    /* Forçar a cor do rótulo (Label) da métrica para escuro */
+    div[data-testid="stMetricLabel"] > label {
+        color: #31333F !important;
+    }
+    
+    /* Forçar a cor do valor da métrica para escuro */
+    div[data-testid="stMetricValue"] {
+        color: #31333F !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -113,15 +122,13 @@ if uploaded_file is not None:
         df_grouped['Ação Recomendada'] = df_grouped.apply(get_recommendation, axis=1)
 
         # --- CÁLCULO DE POTENCIAL (SIMULADOR) ---
-        # Estimativa: Se aumentar orçamento onde perde >20%, recupera 50% dessa perda projetada
         def calc_potential(row):
             if "AUMENTAR ORÇAMENTO" in row['Ação Recomendada']:
                 loss_pct = row['% de impressões perdidas por orçamento'] / 100
                 if loss_pct > 0:
                     current_rev = row['Receita (Moeda local)']
-                    # Projeção simplificada: Receita Total Possível = Receita Atual / (1 - Perda)
                     projected_rev = current_rev / (1 - loss_pct)
-                    gain = (projected_rev - current_rev) * 0.5 # Sendo conservador (recupera 50%)
+                    gain = (projected_rev - current_rev) * 0.5 
                     return gain
             return 0
 
@@ -169,7 +176,7 @@ if uploaded_file is not None:
         st.markdown("---")
         st.subheader("📋 Plano de Ação Detalhado")
 
-        # Filtros na Sidebar (para não poluir o meio)
+        # Filtros na Sidebar
         filtro_acao = st.sidebar.multiselect(
             "Filtrar Tabela por Ação:",
             options=df_grouped['Ação Recomendada'].unique(),
@@ -193,7 +200,6 @@ if uploaded_file is not None:
         )
 
         # 4. Botão de Download (Exportar)
-        # Converter DF para CSV
         csv = df_show.to_csv(index=False).encode('utf-8')
         
         st.download_button(
@@ -207,12 +213,5 @@ if uploaded_file is not None:
         st.error(f"Erro ao processar o arquivo. Detalhes: {e}")
 
 else:
-    # Tela de Boas-vindas (quando não tem arquivo)
+    # Tela de Boas-vindas
     st.info("👈 Faça o upload do seu relatório na barra lateral para começar.")
-    st.markdown("""
-    ### Como usar:
-    1. Vá no Mercado Livre Ads > Publicidade > Relatórios.
-    2. Baixe o relatório **"Por Campanhas"** (Excel ou CSV).
-    3. Arraste o arquivo para a barra lateral esquerda.
-    4. Receba sua análise estratégica instantânea.
-    """)
