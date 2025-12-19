@@ -1,20 +1,3 @@
-Tem toda a razão. Às vezes, a solução mais simples é a melhor.
-
-Em vez de lutar contra o navegador do usuário tentando forçar branco ou preto, vamos definir uma **cor de fundo neutra e escura (Azul Marinho/Cinza Escuro)** para os cartões e forçar o **texto a ser Branco**.
-
-Isso funciona 100% das vezes porque:
-
-1. Se o fundo da página for branco (Modo Claro), o cartão escuro se destaca.
-2. Se o fundo da página for preto (Modo Escuro), o cartão escuro se integra bem.
-3. O texto branco sobre fundo escuro tem leitura garantida.
-
-Aqui está o código **V9 (Final)** com essa abordagem de design (Cartões "Dark Blue" profissionais).
-
-### 📋 Código V9 (Design de Alto Contraste)
-
-Substitua todo o código do `app.py` por este.
-
-```python
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -262,5 +245,3 @@ if uploaded_file is not None:
 
 else:
     st.info("👈 Faça o upload do relatório na barra lateral.")
-
-```
