@@ -3,48 +3,43 @@ import pandas as pd
 import plotly.express as px
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="MeliAds Strategist Pro", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="MeliAds Strategist", page_icon="🚀", layout="wide")
 
-# --- ESTILO CSS (CORRIGIDO PARA MODO ESCURO/CLARO) ---
+# --- ESTILO CSS (CONTRASTE FORÇADO PARA OS CARDS) ---
 st.markdown("""
 <style>
-    /* Estilo dos Cartões de Métricas (KPIs) */
+    /* Força os cards de métricas a terem fundo cinza claro e texto escuro,
+       independente do tema do navegador (Claro/Escuro) */
     div[data-testid="stMetric"] {
-        background-color: #f0f2f6; /* Fundo cinza claro suave */
-        border-left: 5px solid #2e86de; /* Barra lateral azul */
+        background-color: #f0f2f6;
+        border: 1px solid #dcdcdc;
         padding: 15px;
         border-radius: 8px;
-        color: #31333F; /* Força texto escuro dentro do cartão */
-        box-shadow: 1px 1px 4px rgba(0,0,0,0.1);
+        color: #000000;
     }
-    
-    /* Forçar a cor do rótulo (Label) da métrica para escuro */
-    div[data-testid="stMetricLabel"] > label {
-        color: #31333F !important;
+    div[data-testid="stMetricLabel"] p {
+        color: #444444 !important; /* Cor do título da métrica */
     }
-    
-    /* Forçar a cor do valor da métrica para escuro */
-    div[data-testid="stMetricValue"] {
-        color: #31333F !important;
+    div[data-testid="stMetricValue"] div {
+        color: #000000 !important; /* Cor do número */
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- BARRA LATERAL (SIDEBAR) ---
+# --- BARRA LATERAL ---
 with st.sidebar:
     st.image("https://http2.mlstatic.com/frontend-assets/ml-web-navigation/ui-navigation/5.21.22/mercadolibre/logo__large_plus.png", width=150)
-    st.title("Configurações")
+    st.title("MeliAds Pro")
     st.markdown("---")
-    uploaded_file = st.file_uploader("📂 Carregar Relatório (.csv/.xlsx)", type=['csv', 'xlsx'])
-    st.markdown("---")
-    st.info("💡 **Dica:** Baixe o relatório de 'Últimos 15 ou 30 dias' no painel do Mercado Livre para uma análise mais precisa.")
+    uploaded_file = st.file_uploader("📂 Importar Relatório (.csv/.xlsx)", type=['csv', 'xlsx'])
+    st.info("💡 Use o relatório de 'Últimos 15 ou 30 dias' para melhor precisão.")
 
 # --- CABEÇALHO ---
-st.title("🚀 MeliAds Strategist Pro")
-st.markdown("#### Inteligência Artificial para Escala e Rentabilidade")
+st.title("🚀 Painel de Estratégia MeliAds")
+st.markdown("#### Diagnóstico de Rentabilidade e Escala")
 st.markdown("---")
 
-# Função de Limpeza
+# Função de Limpeza Numérica
 def clean_numeric(x):
     if isinstance(x, str):
         x = x.replace('R$', '').replace('.', '').replace(',', '.').strip()
@@ -54,19 +49,18 @@ def clean_numeric(x):
             return 0.0
     return x
 
-# --- PROCESSAMENTO ---
+# --- PROCESSAMENTO DE DADOS ---
 if uploaded_file is not None:
     try:
-        # Leitura
+        # 1. Leitura
         if uploaded_file.name.endswith('.csv'):
             df = pd.read_csv(uploaded_file, header=1)
         else:
             df = pd.read_excel(uploaded_file, header=1)
 
-        # Limpeza Colunas
+        # 2. Limpeza
         df.columns = [c.strip().replace('\n', ' ') for c in df.columns]
-
-        # Limpeza Numérica
+        
         cols_to_clean = ['Investimento (Moeda local)', 'Receita (Moeda local)', 'Orçamento', 
                         'ACOS Objetivo', '% de impressões perdidas por orçamento', 
                         '% de impressões perdidas por classificação']
@@ -77,7 +71,7 @@ if uploaded_file is not None:
                     df[col] = df[col].apply(clean_numeric)
                 df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
-        # Agrupamento (Consolidar dados da mesma campanha)
+        # 3. Agrupamento (Consolidar campanhas)
         if 'Desde' in df.columns:
             df['Desde'] = pd.to_datetime(df['Desde'], errors='coerce')
             df = df.sort_values(by=['Nome', 'Desde'])
@@ -94,124 +88,135 @@ if uploaded_file is not None:
 
         df_grouped = df.groupby('Nome').agg(agg_rules).reset_index()
 
-        # Métricas Calculadas
+        # 4. Cálculos Reais
         df_grouped['ROAS_Real'] = df_grouped.apply(lambda x: x['Receita (Moeda local)'] / x['Investimento (Moeda local)'] if x['Investimento (Moeda local)'] > 0 else 0, axis=1)
         df_grouped['ACOS_Real'] = df_grouped.apply(lambda x: (x['Investimento (Moeda local)'] / x['Receita (Moeda local)'] * 100) if x['Receita (Moeda local)'] > 0 else 0, axis=1)
 
-        # Lógica de Decisão
+        # 5. LÓGICA DE DECISÃO (O Cérebro)
         def get_recommendation(row):
             status = str(row.get('Status', '')).lower()
             if 'ativa' not in status and row['Investimento (Moeda local)'] == 0:
-                return "⚪ Inativa"
+                return "Inativa"
             
             # Escala
             if row['% de impressões perdidas por orçamento'] > 20 and row['ROAS_Real'] > 7:
-                return "🟢 AUMENTAR ORÇAMENTO"
+                return "AUMENTAR ORÇAMENTO 🟢"
             
             # Competitividade
             if row['% de impressões perdidas por classificação'] > 40 and row['ROAS_Real'] > 7:
-                return "🟡 SUBIR ACOS ALVO"
+                return "SUBIR ACOS ALVO 🟡"
             
             # Detratoras
             target = row['ACOS Objetivo'] if row['ACOS Objetivo'] > 0 else 15
             if row['ACOS_Real'] > (target + 5) and row['Investimento (Moeda local)'] > 50:
-                return "🔴 REDUZIR META / PAUSAR"
+                return "PAUSAR / REDUZIR 🔴"
             
-            return "🔵 MANTER"
+            return "MANTER 🔵"
 
-        df_grouped['Ação Recomendada'] = df_grouped.apply(get_recommendation, axis=1)
+        df_grouped['Ação'] = df_grouped.apply(get_recommendation, axis=1)
 
-        # --- CÁLCULO DE POTENCIAL (SIMULADOR) ---
+        # Cálculo de Potencial
         def calc_potential(row):
-            if "AUMENTAR ORÇAMENTO" in row['Ação Recomendada']:
+            if "AUMENTAR" in row['Ação']:
                 loss_pct = row['% de impressões perdidas por orçamento'] / 100
-                if loss_pct > 0:
+                if loss_pct > 0 and loss_pct < 1:
                     current_rev = row['Receita (Moeda local)']
                     projected_rev = current_rev / (1 - loss_pct)
-                    gain = (projected_rev - current_rev) * 0.5 
-                    return gain
+                    return (projected_rev - current_rev) * 0.5 # Conservador (50%)
             return 0
 
-        df_grouped['Potencial_Ganho'] = df_grouped.apply(calc_potential, axis=1)
-        potential_revenue = df_grouped['Potencial_Ganho'].sum()
+        df_grouped['Potencial Extra'] = df_grouped.apply(calc_potential, axis=1)
+        potential_total = df_grouped['Potencial Extra'].sum()
 
-        # --- DASHBOARD VISUAL ---
-        
-        # 1. KPIs
-        col1, col2, col3, col4 = st.columns(4)
+        # --- VISUALIZAÇÃO ---
+
+        # 1. Cartões de KPI
         total_inv = df_grouped['Investimento (Moeda local)'].sum()
         total_rev = df_grouped['Receita (Moeda local)'].sum()
         roas_geral = total_rev / total_inv if total_inv > 0 else 0
 
-        col1.metric("Investimento Total", f"R$ {total_inv:,.2f}")
-        col2.metric("Receita Atual", f"R$ {total_rev:,.2f}")
-        col3.metric("ROAS Geral", f"{roas_geral:.2f}x")
-        col4.metric("💰 Potencial Extra (Est.)", f"+ R$ {potential_revenue:,.2f}", delta="Oportunidade")
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Investimento", f"R$ {total_inv:,.2f}")
+        c2.metric("Receita", f"R$ {total_rev:,.2f}")
+        c3.metric("ROAS Global", f"{roas_geral:.2f}x")
+        c4.metric("Potencial Extra", f"R$ {potential_total:,.2f}", delta="Oportunidade")
 
-        # 2. Gráfico de Quadrantes (Scatter Plot)
-        st.subheader("📊 Matriz de Oportunidade")
-        st.caption("Eixo X: Investimento | Eixo Y: ROAS | Tamanho da Bolha: Receita")
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # 2. GRÁFICO SIMPLIFICADO (BARRAS)
+        st.subheader("📊 Distribuição de Receita por Ação Recomendada")
+        st.caption("Onde está o dinheiro da sua conta?")
         
-        # Filtrar inativas para o gráfico ficar limpo
-        df_chart = df_grouped[df_grouped['Receita (Moeda local)'] > 0]
+        # Agrupar receita por Ação para o gráfico
+        df_chart = df_grouped[df_grouped['Receita (Moeda local)'] > 0].groupby('Ação')['Receita (Moeda local)'].sum().reset_index()
         
-        fig = px.scatter(
-            df_chart,
-            x="Investimento (Moeda local)",
-            y="ROAS_Real",
-            size="Receita (Moeda local)",
-            color="Ação Recomendada",
-            hover_name="Nome",
-            color_discrete_map={
-                "🟢 AUMENTAR ORÇAMENTO": "green",
-                "🟡 SUBIR ACOS ALVO": "#FFC107",
-                "🔵 MANTER": "blue",
-                "🔴 REDUZIR META / PAUSAR": "red"
-            },
-            log_x=True # Escala logarítmica ajuda a ver campanhas pequenas e grandes juntas
+        # Mapa de Cores
+        color_map = {
+            "AUMENTAR ORÇAMENTO 🟢": "#2ecc71", # Verde
+            "SUBIR ACOS ALVO 🟡": "#f1c40f", # Amarelo
+            "MANTER 🔵": "#3498db", # Azul
+            "PAUSAR / REDUZIR 🔴": "#e74c3c", # Vermelho
+            "Inativa": "#95a5a6"
+        }
+
+        fig = px.bar(
+            df_chart, 
+            x='Receita (Moeda local)', 
+            y='Ação', 
+            orientation='h', # Barras horizontais são mais fáceis de ler
+            text_auto='.2s', # Formatar número curto (ex: 20k)
+            color='Ação',
+            color_discrete_map=color_map,
+            height=350
         )
+        fig.update_layout(showlegend=False, xaxis_title="Receita Total (R$)", yaxis_title=None)
         st.plotly_chart(fig, use_container_width=True)
 
-        # 3. Tabela de Ação
+        # 3. TABELA DE AÇÃO (Estilo Nativo - Sem problemas de contraste)
         st.markdown("---")
-        st.subheader("📋 Plano de Ação Detalhado")
-
-        # Filtros na Sidebar
-        filtro_acao = st.sidebar.multiselect(
-            "Filtrar Tabela por Ação:",
-            options=df_grouped['Ação Recomendada'].unique(),
-            default=df_grouped['Ação Recomendada'].unique()
-        )
+        st.subheader("📋 Plano de Ação Tático")
         
-        df_show = df_grouped[df_grouped['Ação Recomendada'].isin(filtro_acao)].copy()
+        # Filtro Lateral
+        acoes_unicas = sorted(df_grouped['Ação'].unique())
+        filtro_acao = st.multiselect("Filtrar por Ação:", acoes_unicas, default=acoes_unicas)
+        
+        # Preparar Tabela Final
+        df_show = df_grouped[df_grouped['Ação'].isin(filtro_acao)].copy()
         df_show = df_show.sort_values(by='ROAS_Real', ascending=False)
+        
+        # Selecionar colunas para exibir
+        cols_final = ['Nome', 'Ação', 'Orçamento', 'ACOS Objetivo', 'ROAS_Real', 'Potencial Extra', 
+                      '% de impressões perdidas por orçamento', '% de impressões perdidas por classificação']
 
-        # Exibir Tabela
+        # Exibir usando st.dataframe com column_config (Nativo e bonito)
         st.dataframe(
-            df_show[['Nome', 'Orçamento', 'ACOS Objetivo', 'ROAS_Real', '% de impressões perdidas por orçamento', '% de impressões perdidas por classificação', 'Ação Recomendada']].style.format({
-                'Orçamento': 'R$ {:.2f}',
-                'ACOS Objetivo': '{:.1f}%',
-                'ROAS_Real': '{:.2f}',
-                '% de impressões perdidas por orçamento': '{:.1f}%',
-                '% de impressões perdidas por classificação': '{:.1f}%'
-            }),
+            df_show[cols_final],
+            column_config={
+                "Nome": st.column_config.TextColumn("Campanha", width="medium"),
+                "Ação": st.column_config.TextColumn("Recomendação", width="medium"),
+                "Orçamento": st.column_config.NumberColumn("Orçamento", format="R$ %.2f"),
+                "ACOS Objetivo": st.column_config.NumberColumn("Meta ACOS", format="%.1f%%"),
+                "ROAS_Real": st.column_config.ProgressColumn("ROAS", format="%.2f", min_value=0, max_value=20), # Barra de progresso visual
+                "Potencial Extra": st.column_config.NumberColumn("Potencial", format="R$ %.2f"),
+                "% de impressões perdidas por orçamento": st.column_config.NumberColumn("Perda $$", format="%.1f%%"),
+                "% de impressões perdidas por classificação": st.column_config.NumberColumn("Perda Rank", format="%.1f%%"),
+            },
+            hide_index=True,
             use_container_width=True,
             height=500
         )
 
-        # 4. Botão de Download (Exportar)
+        # 4. Botão Download
         csv = df_show.to_csv(index=False).encode('utf-8')
-        
         st.download_button(
-            label="📥 Baixar Análise em Excel (CSV)",
+            label="📥 Baixar Tabela em Excel (CSV)",
             data=csv,
-            file_name='Analise_MeliAds_Pro.csv',
+            file_name='Plano_MeliAds.csv',
             mime='text/csv',
         )
 
     except Exception as e:
-        st.error(f"Erro ao processar o arquivo. Detalhes: {e}")
+        st.error(f"Erro ao processar: {e}")
 
 else:
-    # Tela de Boas-vindas
-    st.info("👈 Faça o upload do seu relatório na barra lateral para começar.")
+    st.info("👈 Faça o upload do relatório na barra lateral.")
