@@ -5,23 +5,39 @@ import plotly.express as px
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="MeliAds Strategist", page_icon="🚀", layout="wide")
 
-# --- ESTILO CSS (CONTRASTE FORÇADO PARA OS CARDS) ---
+# --- ESTILO CSS (CORREÇÃO DE CONTRASTE) ---
 st.markdown("""
 <style>
-    /* Força os cards de métricas a terem fundo cinza claro e texto escuro,
-       independente do tema do navegador (Claro/Escuro) */
+    /* 1. Estilo do Cartão (Fundo Cinza Claro) */
     div[data-testid="stMetric"] {
-        background-color: #f0f2f6;
+        background-color: #f0f2f6 !important;
         border: 1px solid #dcdcdc;
         padding: 15px;
         border-radius: 8px;
-        color: #000000;
+        box-shadow: 1px 1px 4px rgba(0,0,0,0.1);
     }
-    div[data-testid="stMetricLabel"] p {
-        color: #444444 !important; /* Cor do título da métrica */
+
+    /* 2. Forçar COR PRETA no Título (Label) */
+    div[data-testid="stMetricLabel"] {
+        color: #444444 !important;
+        font-weight: bold;
     }
-    div[data-testid="stMetricValue"] div {
-        color: #000000 !important; /* Cor do número */
+    /* Caso o Streamlit use tags p ou div internas */
+    div[data-testid="stMetricLabel"] * {
+        color: #444444 !important;
+    }
+
+    /* 3. Forçar COR PRETA no Número (Value) */
+    div[data-testid="stMetricValue"] {
+        color: #000000 !important;
+    }
+    div[data-testid="stMetricValue"] * {
+        color: #000000 !important;
+    }
+
+    /* 4. Ajuste do Delta (Flechinhas) para garantir leitura */
+    div[data-testid="stMetricDelta"] svg {
+        fill: #333333 !important; /* Ícone escuro se necessário */
     }
 </style>
 """, unsafe_allow_html=True)
@@ -163,8 +179,8 @@ if uploaded_file is not None:
             df_chart, 
             x='Receita (Moeda local)', 
             y='Ação', 
-            orientation='h', # Barras horizontais são mais fáceis de ler
-            text_auto='.2s', # Formatar número curto (ex: 20k)
+            orientation='h',
+            text_auto='.2s',
             color='Ação',
             color_discrete_map=color_map,
             height=350
@@ -172,7 +188,7 @@ if uploaded_file is not None:
         fig.update_layout(showlegend=False, xaxis_title="Receita Total (R$)", yaxis_title=None)
         st.plotly_chart(fig, use_container_width=True)
 
-        # 3. TABELA DE AÇÃO (Estilo Nativo - Sem problemas de contraste)
+        # 3. TABELA DE AÇÃO (Estilo Nativo)
         st.markdown("---")
         st.subheader("📋 Plano de Ação Tático")
         
@@ -184,11 +200,10 @@ if uploaded_file is not None:
         df_show = df_grouped[df_grouped['Ação'].isin(filtro_acao)].copy()
         df_show = df_show.sort_values(by='ROAS_Real', ascending=False)
         
-        # Selecionar colunas para exibir
         cols_final = ['Nome', 'Ação', 'Orçamento', 'ACOS Objetivo', 'ROAS_Real', 'Potencial Extra', 
                       '% de impressões perdidas por orçamento', '% de impressões perdidas por classificação']
 
-        # Exibir usando st.dataframe com column_config (Nativo e bonito)
+        # Exibir Tabela
         st.dataframe(
             df_show[cols_final],
             column_config={
@@ -196,7 +211,7 @@ if uploaded_file is not None:
                 "Ação": st.column_config.TextColumn("Recomendação", width="medium"),
                 "Orçamento": st.column_config.NumberColumn("Orçamento", format="R$ %.2f"),
                 "ACOS Objetivo": st.column_config.NumberColumn("Meta ACOS", format="%.1f%%"),
-                "ROAS_Real": st.column_config.ProgressColumn("ROAS", format="%.2f", min_value=0, max_value=20), # Barra de progresso visual
+                "ROAS_Real": st.column_config.ProgressColumn("ROAS", format="%.2f", min_value=0, max_value=20),
                 "Potencial Extra": st.column_config.NumberColumn("Potencial", format="R$ %.2f"),
                 "% de impressões perdidas por orçamento": st.column_config.NumberColumn("Perda $$", format="%.1f%%"),
                 "% de impressões perdidas por classificação": st.column_config.NumberColumn("Perda Rank", format="%.1f%%"),
